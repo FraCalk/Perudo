@@ -34,6 +34,10 @@ import androidx.compose.ui.unit.sp
 import com.example.perudo.DiceSummary
 import com.example.perudo.ValueCountInfo
 
+/**
+ * Componente visivo che mostra il riepilogo statistico e strategico dei dadi per il Perudo.
+ * Include il conteggio dei Jolly (1), le combinazioni/coppie e il breakdown per ciascun valore.
+ */
 @Composable
 fun DiceSummaryView(
     summary: DiceSummary,
@@ -53,7 +57,7 @@ fun DiceSummaryView(
                 .fillMaxWidth()
                 .padding(16.dp)
         ) {
-            // 1. Jolly Section Header
+            // 1. Sezione Jolly (Valore 1)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -106,7 +110,7 @@ fun DiceSummaryView(
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            // 2. Combinations / Pairs Section
+            // 2. Sezione Combinazioni e Coppie (incluse combinazioni con i Jolly)
             Text(
                 text = "Coppie e Combinazioni (inclusi Jolly)",
                 style = MaterialTheme.typography.labelLarge,
@@ -161,7 +165,7 @@ fun DiceSummaryView(
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            // 3. Values Breakdown Row (2 to 6)
+            // 3. Sezione Breakdown del Conteggio per ciascun valore (da 2 a 6)
             Text(
                 text = "Conteggio Totale (Naturali)",
                 style = MaterialTheme.typography.labelLarge,
@@ -185,6 +189,9 @@ fun DiceSummaryView(
     }
 }
 
+/**
+ * Singolo riquadro per mostrare il conteggio di un determinato valore di dado.
+ */
 @Composable
 private fun ValueCountTile(
     info: ValueCountInfo,
@@ -215,7 +222,6 @@ private fun ValueCountTile(
 
         Spacer(modifier = Modifier.height(4.dp))
 
-        // Natural count
         Text(
             text = "${info.naturalCount}",
             fontSize = 12.sp,
@@ -225,6 +231,9 @@ private fun ValueCountTile(
     }
 }
 
+/**
+ * Disegna i pallini miniaturizzati per i riquadri di riepilogo.
+ */
 @Composable
 private fun MiniDicePips(
     value: Int,

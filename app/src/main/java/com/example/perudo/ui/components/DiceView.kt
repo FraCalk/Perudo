@@ -39,6 +39,9 @@ import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.random.Random
 
+/**
+ * Struttura di supporto per mappare i valori sulle 6 facce di un cubo tridimensionale.
+ */
 private data class CubeFaceValues(
     val front: Int,
     val back: Int,
@@ -48,6 +51,9 @@ private data class CubeFaceValues(
     val left: Int
 )
 
+/**
+ * Calcola la disposizione dei valori sulle facce opposte del dado basandosi sul valore target (regola standard del dado: facce opposte sommano a 7).
+ */
 private fun getCubeFaceValues(target: Int): CubeFaceValues {
     return when (target) {
         1 -> CubeFaceValues(front = 1, back = 6, top = 2, bottom = 5, right = 3, left = 4)
@@ -60,6 +66,9 @@ private fun getCubeFaceValues(target: Int): CubeFaceValues {
     }
 }
 
+/**
+ * Componente visivo composable che rappresenta un singolo dado a 6 facce con animazione 3D di rotazione e rimbalzo.
+ */
 @Composable
 fun DiceView(
     die: DieItem,
@@ -71,27 +80,27 @@ fun DiceView(
 ) {
     var displayedValue by remember { mutableIntStateOf(die.value) }
 
-    // 3D Animatable properties (flat 0f when resting)
+    // Proprietà animabili per l'effetto 3D (rotazioni X, Y, Z, scala e traslazione verticale)
     val rotX = remember { Animatable(0f) }
     val rotY = remember { Animatable(0f) }
     val rotZ = remember { Animatable(0f) }
     val scale = remember { Animatable(1f) }
     val translationY = remember { Animatable(0f) }
 
-    // Keep displayed value synced when not rolling
+    // Sincronizza il valore visualizzato quando non si sta lanciando
     LaunchedEffect(die.value) {
         if (!isRolling) {
             displayedValue = die.value
         }
     }
 
-    // Trigger 3D tumble rolling animations ONLY when rolling
+    // Gestisce l'animazione di rotazione 3D e rimbalzo durante il lancio
     LaunchedEffect(isRolling) {
         if (isRolling) {
             val delayMs = (staggerIndex * 80L).coerceAtMost(400L)
             delay(delayMs)
 
-            // Random face cycling coroutine while rolling
+            // Cambia rapidamente i numeri visibili durante il rotolamento
             launch {
                 val startTime = System.currentTimeMillis()
                 val duration = 520L
@@ -102,9 +111,9 @@ fun DiceView(
                 displayedValue = die.value
             }
 
-            // 3D Motion & Tumble coroutines
+            // Animazioni fisiche di salto, espansione e rotazione tridimensionale
             launch {
-                // High 3D Jump & bouncy landing
+                // Effetto rimbalzo verticale (salto)
                 launch {
                     translationY.animateTo(
                         targetValue = -70f,
@@ -119,7 +128,7 @@ fun DiceView(
                     )
                 }
 
-                // 3D Scale expansion in air
+                // Ingrandimento temporaneo a metà salto
                 launch {
                     scale.animateTo(
                         targetValue = 1.35f,
@@ -134,7 +143,7 @@ fun DiceView(
                     )
                 }
 
-                // 3D rotations on X, Y, and Z axes
+                // Rotazioni tridimensionali sui tre assi
                 launch {
                     rotX.animateTo(
                         targetValue = 720f,
@@ -158,7 +167,7 @@ fun DiceView(
                 }
             }
         } else {
-            // Ensure flat resting state when not rolling
+            // Ripristina lo stato neutro a riposo
             rotX.snapTo(0f)
             rotY.snapTo(0f)
             rotZ.snapTo(0f)
@@ -171,7 +180,7 @@ fun DiceView(
     val rxRad = Math.toRadians(rotX.value.toDouble())
     val ryRad = Math.toRadians(rotY.value.toDouble())
 
-    // Normal Z vector calculation towards camera for 3D face visibility
+    // Calcolo della visibilità delle facce in base all'angolo di rotazione 3D
     val frontZ = cos(rxRad) * cos(ryRad)
     val backZ = -cos(rxRad) * cos(ryRad)
     val rightZ = cos(rxRad) * sin(ryRad)
@@ -195,13 +204,12 @@ fun DiceView(
                 this.scaleX = scale.value
                 this.scaleY = scale.value
                 this.translationY = translationY.value
-                // Lower camera distance gives dramatic 3D perspective during rotation
-                this.cameraDistance = 8 * density
+                this.cameraDistance = 8 * density // Prospettiva 3D accentuata
             }
             .clickable(enabled = !isRolling, onClick = onClickToRemove),
         contentAlignment = Alignment.Center
     ) {
-        // 1. Front Face
+        // Faccia Frontale
         CubeFace(
             value = faceValues.front,
             size = size,
@@ -213,7 +221,7 @@ fun DiceView(
             }
         )
 
-        // 2. Back Face
+        // Faccia Posteriore
         CubeFace(
             value = faceValues.back,
             size = size,
@@ -225,7 +233,7 @@ fun DiceView(
             }
         )
 
-        // 3. Right Face (Folded 90° on right edge)
+        // Faccia Destra
         CubeFace(
             value = faceValues.right,
             size = size,
@@ -237,7 +245,7 @@ fun DiceView(
             }
         )
 
-        // 4. Left Face (Folded -90° on left edge)
+        // Faccia Sinistra
         CubeFace(
             value = faceValues.left,
             size = size,
@@ -249,7 +257,7 @@ fun DiceView(
             }
         )
 
-        // 5. Top Face (Folded -90° on top edge)
+        // Faccia Superiore
         CubeFace(
             value = faceValues.top,
             size = size,
@@ -261,7 +269,7 @@ fun DiceView(
             }
         )
 
-        // 6. Bottom Face (Folded 90° on bottom edge)
+        // Faccia Inferiore
         CubeFace(
             value = faceValues.bottom,
             size = size,
@@ -275,6 +283,9 @@ fun DiceView(
     }
 }
 
+/**
+ * Rappresenta una singola faccia del cubo 3D.
+ */
 @Composable
 private fun CubeFace(
     value: Int,
@@ -315,6 +326,9 @@ private fun CubeFace(
     }
 }
 
+/**
+ * Disegna i pallini (pips) tradizionali sulle facce del dado utilizzando un Canvas, evidenziando in modo speciale il Jolly (1).
+ */
 @Composable
 private fun DicePipsFace(
     value: Int,
@@ -347,9 +361,10 @@ private fun DicePipsFace(
                 )
             }
 
+            // Disposizione geometrica dei pallini in base al valore facciale da 1 a 6
             when (value) {
                 1 -> {
-                    // Jolly 1 is highlighted in primary color
+                    // Il valore 1 rappresenta il Jolly nel Perudo ed è evidenziato
                     drawPip(centerX, centerY, isJolly = true)
                 }
                 2 -> {

@@ -26,7 +26,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -56,18 +58,26 @@ import com.example.perudo.DiceViewModel
 import com.example.perudo.ui.components.DiceSummaryView
 import com.example.perudo.ui.components.DiceView
 
+/**
+ * Schermata principale dell'applicazione Perudo che ospita la griglia dei dadi,
+ * il pannello di riepilogo, il pulsante di lancio animato e il dialogo con le regole del gioco.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DiceScreen(
+    darkTheme: Boolean,
+    onToggleTheme: () -> Unit,
     viewModel: DiceViewModel = viewModel()
 ) {
+    // Osserva gli stati reattivi provenienti dal ViewModel
     val dice by viewModel.dice.collectAsState()
     val isRolling by viewModel.isRolling.collectAsState()
     val summary by viewModel.diceSummary.collectAsState()
 
+    // Stato per gestire la visibilità del dialogo con le regole del Perudo
     var showRulesDialog by remember { mutableStateOf(false) }
 
-    // Infinite rotation for the refresh icon when rolling
+    // Transizione infinita per animare la rotazione dell'icona di ricarica durante il lancio
     val infiniteTransition = rememberInfiniteTransition(label = "iconRollTransition")
     val iconRotation by infiniteTransition.animateFloat(
         initialValue = 0f,
@@ -88,7 +98,18 @@ fun DiceScreen(
                         fontWeight = FontWeight.Bold
                     )
                 },
+                navigationIcon = {
+                    // Pulsante in alto a sinistra per alternare tra Light Mode e Dark Mode
+                    IconButton(onClick = onToggleTheme) {
+                        Icon(
+                            imageVector = if (darkTheme) Icons.Default.WbSunny else Icons.Default.DarkMode,
+                            contentDescription = "Cambia Modalità Tema",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                },
                 actions = {
+                    // Pulsante per aprire il regolamento del gioco
                     IconButton(onClick = { showRulesDialog = true }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.HelpOutline,
@@ -103,6 +124,7 @@ fun DiceScreen(
             )
         },
         floatingActionButton = {
+            // Pulsante fluttuante "+" per aggiungere un nuovo dado
             FloatingActionButton(
                 onClick = { if (!isRolling) viewModel.addDie() },
                 containerColor = MaterialTheme.colorScheme.primary
@@ -132,7 +154,7 @@ fun DiceScreen(
                 modifier = Modifier.padding(bottom = 12.dp)
             )
 
-            // Dynamic grid of dice that adapts size and column count (max 4 per row)
+            // Griglia dinamica dei dadi che si adatta allo spazio disponibile
             BoxWithConstraints(
                 modifier = Modifier
                     .weight(1f)
@@ -150,7 +172,7 @@ fun DiceScreen(
                         )
                     }
                 } else {
-                    // Determine optimal columns (1 to 4 max)
+                    // Determina il numero ottimale di colonne in base alla quantità di dadi
                     val numColumns = when {
                         dice.size <= 1 -> 1
                         dice.size == 2 -> 2
@@ -160,7 +182,7 @@ fun DiceScreen(
                         else -> 4
                     }
 
-                    // Dynamically scale die size based on column layout
+                    // Scala la dimensione dei dadi dinamicamente in base alle colonne
                     val calculatedSize = when (numColumns) {
                         1 -> 130.dp
                         2 -> 108.dp
@@ -194,6 +216,7 @@ fun DiceScreen(
                 }
             }
 
+            // Mostra il riepilogo del Perudo se ci sono dadi
             if (dice.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(12.dp))
                 DiceSummaryView(summary = summary)
@@ -201,7 +224,7 @@ fun DiceScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Roll Button
+            // Pulsante principale per avviare il lancio dei dadi
             Button(
                 onClick = { viewModel.rollDice() },
                 modifier = Modifier
@@ -226,7 +249,7 @@ fun DiceScreen(
         }
     }
 
-    // Rules Pop-up Dialog
+    // Dialogo pop-up con le regole complete del Perudo
     if (showRulesDialog) {
         AlertDialog(
             onDismissRequest = { showRulesDialog = false },
@@ -307,7 +330,7 @@ fun DiceScreen(
                         color = MaterialTheme.colorScheme.primary
                     )
                     Text(
-                        text = "Quando un giocatore rimane per la prima volta con un SOLO dado, la manche successiva è una manche di Palafico:\n• Gli 1 NON sono Jolly (valgono soltanto come 1).\n• Il giocatore in Palafico decide il valore del dado scommesso; gli altri giocatori possono solo aumentare la quantità mantenendo lo stesso dado.",
+                        text = "Quando un giocatore rimane per la prima φορά con un SOLO dado, la manche successiva è una manche di Palafico:\n• Gli 1 NON sono Jolly (valgono soltanto come 1).\n• Il giocatore in Palafico decide il valore del dado scommesso; gli altri giocatori possono solo aumentare la quantità mantenendo lo stesso dado.",
                         style = MaterialTheme.typography.bodyMedium
                     )
                 }
