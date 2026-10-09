@@ -77,7 +77,7 @@ fun DiceSummaryView(
                     Spacer(modifier = Modifier.width(10.dp))
                     Column {
                         Text(
-                            text = "Jolly (Dadi 1)",
+                            text = "Jolly (Dado da 1)",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface
@@ -163,7 +163,7 @@ fun DiceSummaryView(
 
             // 3. Values Breakdown Row (2 to 6)
             Text(
-                text = "Conteggio Totale (Naturale + Jolly)",
+                text = "Conteggio Totale (Naturali)",
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.primary,
@@ -222,21 +222,6 @@ private fun ValueCountTile(
             fontWeight = if (isHighlighted) FontWeight.Bold else FontWeight.Normal,
             color = if (isHighlighted) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.outline
         )
-
-        // Total with Jolly badge
-        Surface(
-            color = if (info.totalWithJolly > 0) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f),
-            shape = RoundedCornerShape(6.dp),
-            modifier = Modifier.padding(top = 2.dp)
-        ) {
-            Text(
-                text = "${info.totalWithJolly}",
-                fontSize = 11.sp,
-                fontWeight = FontWeight.ExtraBold,
-                color = if (info.totalWithJolly > 0) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.outline,
-                modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
-            )
-        }
     }
 }
 

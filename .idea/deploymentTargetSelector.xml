@@ -2,7 +2,7 @@
 <project version="4">
   <component name="deploymentTargetSelector">
     <selectionStates>
-      <SelectionState runConfigName="app">
+      <SelectionState runConfigName="Perudo">
         <option name="selectionMode" value="DROPDOWN" />
         <DropdownSelection timestamp="2026-10-09T20:44:52.638966700Z">
           <Target type="DEFAULT_BOOT">
