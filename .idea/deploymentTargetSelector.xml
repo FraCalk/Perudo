@@ -4,10 +4,10 @@
     <selectionStates>
       <SelectionState runConfigName="Perudo">
         <option name="selectionMode" value="DROPDOWN" />
-        <DropdownSelection timestamp="2026-10-10T20:04:49.279299Z">
+        <DropdownSelection timestamp="2026-10-10T21:10:55.201256Z">
           <Target type="DEFAULT_BOOT">
             <handle>
-              <DeviceId pluginId="PhysicalDevice" identifier="serial=41041JEKB17658" />
+              <DeviceId pluginId="LocalEmulator" identifier="path=C:\Users\Francesco\.android\avd\Pixel_8a.avd" />
             </handle>
           </Target>
         </DropdownSelection>

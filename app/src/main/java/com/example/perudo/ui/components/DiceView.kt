@@ -98,8 +98,7 @@ private fun projectPoint(p: Point3D, center: Offset, focalLength: Float = 750f):
 }
 
 /**
- * Renderer per il dado che riceve fin dal primo frame del lancio il nuovo valore target,
- * ruotando e atterrando già sul numero definitivo estratto.
+ * Renderer per il dado con Motion Blur bilanciato a "via di mezzo".
  */
 @Composable
 fun DiceView(
@@ -213,7 +212,7 @@ fun DiceView(
             .clickable(enabled = !isRolling, onClick = onClickToRemove),
         contentAlignment = Alignment.Center,
     ) {
-        // Canvas unico per ombra sul terreno, Motion Blur 3D su tutte le facce e dado
+        // Canvas unico per ombra sul terreno, Motion Blur 3D bilanciato su tutte le facce e dado
         Canvas(
             modifier = Modifier
                 .padding(4.dp)
@@ -259,7 +258,7 @@ fun DiceView(
                     jollyPipColor = jollyPipColor,
                 )
             } else {
-                // IN MOVIMENTO: Cubo 3D con Motion Blur dinamico
+                // IN MOVIMENTO: Cubo 3D con Motion Blur bilanciato
                 renderSolid3DCubeWithMotionBlur(
                     center = dieCenter,
                     cubeHalfSize = cubeHalfSize,
@@ -267,6 +266,7 @@ fun DiceView(
                     rotX = rotX.value,
                     rotY = rotY.value,
                     rotZ = rotZ.value,
+                    heightOffGround = heightOffGround,
                     faceBaseColor = faceBaseColor,
                     borderColor = borderColor,
                     defaultPipColor = defaultPipColor,
@@ -383,7 +383,7 @@ private fun DrawScope.drawFlatPipsForFace(
 }
 
 /**
- * Renderizza il cubo 3D unito applicando scie di Motion Blur durante la rotazione veloce.
+ * Renderizza il cubo 3D unito applicando 3 scie bilanciate di Motion Blur durante la rotazione veloce.
  */
 private fun DrawScope.renderSolid3DCubeWithMotionBlur(
     center: Offset,
@@ -392,39 +392,64 @@ private fun DrawScope.renderSolid3DCubeWithMotionBlur(
     rotX: Float,
     rotY: Float,
     rotZ: Float,
+    heightOffGround: Float,
     faceBaseColor: Color,
     borderColor: Color,
     defaultPipColor: Color,
     jollyPipColor: Color,
 ) {
-    // Scie di Motion Blur 3D durante la rotazione veloce
-    // Scia Motion Blur 2 (sfumata)
-    renderSolid3DCubeMesh(
-        center = center,
-        cubeHalfSize = cubeHalfSize * 0.97f,
-        displayedValue = displayedValue,
-        rotX = rotX - 22f,
-        rotY = rotY - 22f,
-        rotZ = rotZ - 12f,
-        faceBaseColor = faceBaseColor.copy(alpha = 0.18f),
-        borderColor = borderColor.copy(alpha = 0.22f),
-        defaultPipColor = defaultPipColor.copy(alpha = 0.18f),
-        jollyPipColor = jollyPipColor.copy(alpha = 0.18f),
-    )
+    // Bilanciamento "via di mezzo" per l'intensità del Motion Blur
+    val velocityFactor = (0.4f + (heightOffGround / 110f)).coerceIn(0.4f, 0.9f)
 
-    // Scia Motion Blur 1 (vicina)
-    renderSolid3DCubeMesh(
-        center = center,
-        cubeHalfSize = cubeHalfSize * 0.985f,
-        displayedValue = displayedValue,
-        rotX = rotX - 10f,
-        rotY = rotY - 10f,
-        rotZ = rotZ - 5f,
-        faceBaseColor = faceBaseColor.copy(alpha = 0.35f),
-        borderColor = borderColor.copy(alpha = 0.40f),
-        defaultPipColor = defaultPipColor.copy(alpha = 0.35f),
-        jollyPipColor = jollyPipColor.copy(alpha = 0.35f),
-    )
+    if (velocityFactor > 0.08f) {
+        // Scia 3 (Sfumata)
+        renderSolid3DCubeMesh(
+            center = center,
+            cubeHalfSize = cubeHalfSize * 0.96f,
+            displayedValue = displayedValue,
+            rotX = rotX - (26f * velocityFactor),
+            rotY = rotY - (26f * velocityFactor),
+            rotZ = rotZ - (13f * velocityFactor),
+            isRolling = true,
+            velocityFactor = velocityFactor,
+            faceBaseColor = faceBaseColor.copy(alpha = 0.15f * velocityFactor),
+            borderColor = borderColor.copy(alpha = 0.18f * velocityFactor),
+            defaultPipColor = defaultPipColor.copy(alpha = 0.15f * velocityFactor),
+            jollyPipColor = jollyPipColor.copy(alpha = 0.15f * velocityFactor),
+        )
+
+        // Scia 2 (Intermedia)
+        renderSolid3DCubeMesh(
+            center = center,
+            cubeHalfSize = cubeHalfSize * 0.98f,
+            displayedValue = displayedValue,
+            rotX = rotX - (15f * velocityFactor),
+            rotY = rotY - (15f * velocityFactor),
+            rotZ = rotZ - (7f * velocityFactor),
+            isRolling = true,
+            velocityFactor = velocityFactor,
+            faceBaseColor = faceBaseColor.copy(alpha = 0.28f * velocityFactor),
+            borderColor = borderColor.copy(alpha = 0.32f * velocityFactor),
+            defaultPipColor = defaultPipColor.copy(alpha = 0.28f * velocityFactor),
+            jollyPipColor = jollyPipColor.copy(alpha = 0.28f * velocityFactor),
+        )
+
+        // Scia 1 (Vicina e morbida)
+        renderSolid3DCubeMesh(
+            center = center,
+            cubeHalfSize = cubeHalfSize * 0.99f,
+            displayedValue = displayedValue,
+            rotX = rotX - (7f * velocityFactor),
+            rotY = rotY - (7f * velocityFactor),
+            rotZ = rotZ - (3f * velocityFactor),
+            isRolling = true,
+            velocityFactor = velocityFactor,
+            faceBaseColor = faceBaseColor.copy(alpha = 0.45f * velocityFactor),
+            borderColor = borderColor.copy(alpha = 0.50f * velocityFactor),
+            defaultPipColor = defaultPipColor.copy(alpha = 0.45f * velocityFactor),
+            jollyPipColor = jollyPipColor.copy(alpha = 0.45f * velocityFactor),
+        )
+    }
 
     // Cubo 3D principale
     renderSolid3DCubeMesh(
@@ -434,6 +459,8 @@ private fun DrawScope.renderSolid3DCubeWithMotionBlur(
         rotX = rotX,
         rotY = rotY,
         rotZ = rotZ,
+        isRolling = true,
+        velocityFactor = velocityFactor,
         faceBaseColor = faceBaseColor,
         borderColor = borderColor,
         defaultPipColor = defaultPipColor,
@@ -499,6 +526,8 @@ private fun DrawScope.renderSolid3DCubeMesh(
     rotX: Float,
     rotY: Float,
     rotZ: Float,
+    isRolling: Boolean = false,
+    velocityFactor: Float = 0f,
     faceBaseColor: Color,
     borderColor: Color,
     defaultPipColor: Color,
@@ -611,6 +640,8 @@ private fun DrawScope.renderSolid3DCubeMesh(
             face = face,
             center = center,
             cubeHalfSize = cubeHalfSize,
+            isRolling = isRolling,
+            velocityFactor = velocityFactor,
             defaultPipColor = defaultPipColor,
             jollyPipColor = jollyPipColor,
         )
@@ -618,12 +649,15 @@ private fun DrawScope.renderSolid3DCubeMesh(
 }
 
 /**
- * Disegna i pallini proiettati in 3D sulla superficie di ciascuna faccia del cubo.
+ * Disegna i pallini proiettati in 3D sulla superficie di ciascuna faccia del cubo,
+ * applicando una scia morbida di Motion Blur quando il dado sta rollando.
  */
 private fun DrawScope.draw3DPipsForFace(
     face: RenderFace,
     center: Offset,
     cubeHalfSize: Float,
+    isRolling: Boolean = false,
+    velocityFactor: Float = 0f,
     defaultPipColor: Color,
     jollyPipColor: Color,
 ) {
@@ -643,6 +677,16 @@ private fun DrawScope.draw3DPipsForFace(
         val (px, py, pScale) = projectPoint(pip3D, center)
         val finalRadius = if (isJolly) pipRadiusBase * 1.25f * pScale else pipRadiusBase * pScale
         val color = if (isJolly) jollyPipColor else defaultPipColor
+
+        // Scia direzionale morbida ed elegante sui pallini durante il rotolamento
+        if (isRolling && velocityFactor > 0.1f) {
+            val shift = 2.5f * velocityFactor
+            drawCircle(
+                color = color.copy(alpha = color.alpha * 0.25f),
+                radius = finalRadius * 1.10f,
+                center = Offset(px - shift, py - shift),
+            )
+        }
 
         drawCircle(
             color = color,
