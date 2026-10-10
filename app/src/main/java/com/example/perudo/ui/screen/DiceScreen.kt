@@ -67,7 +67,7 @@ import com.example.perudo.ui.components.DiceView
 fun DiceScreen(
     darkTheme: Boolean,
     onToggleTheme: () -> Unit,
-    viewModel: DiceViewModel = viewModel()
+    viewModel: DiceViewModel = viewModel(),
 ) {
     // Osserva gli stati reattivi provenienti dal ViewModel
     val dice by viewModel.dice.collectAsState()
@@ -75,7 +75,7 @@ fun DiceScreen(
     val summary by viewModel.diceSummary.collectAsState()
 
     // Stato per gestire la visibilità del dialogo con le regole del Perudo
-    var showRulesDialog by remember { mutableStateOf(false) }
+    var showRulesDialog by remember { mutableStateOf(value = false) }
 
     // Transizione infinita per animare la rotazione dell'icona di ricarica durante il lancio
     val infiniteTransition = rememberInfiniteTransition(label = "iconRollTransition")
@@ -84,9 +84,9 @@ fun DiceScreen(
         targetValue = 360f,
         animationSpec = infiniteRepeatable(
             animation = tween(600, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
+            repeatMode = RepeatMode.Restart,
         ),
-        label = "iconRotation"
+        label = "iconRotation",
     )
 
     Scaffold(
@@ -95,7 +95,7 @@ fun DiceScreen(
                 title = {
                     Text(
                         text = "Perudo",
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
                     )
                 },
                 navigationIcon = {
@@ -104,7 +104,7 @@ fun DiceScreen(
                         Icon(
                             imageVector = if (darkTheme) Icons.Default.WbSunny else Icons.Default.DarkMode,
                             contentDescription = "Cambia Modalità Tema",
-                            tint = MaterialTheme.colorScheme.primary
+                            tint = MaterialTheme.colorScheme.primary,
                         )
                     }
                 },
@@ -114,61 +114,61 @@ fun DiceScreen(
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.HelpOutline,
                             contentDescription = "Regole del Gioco",
-                            tint = MaterialTheme.colorScheme.primary
+                            tint = MaterialTheme.colorScheme.primary,
                         )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                )
+                    containerColor = MaterialTheme.colorScheme.surface,
+                ),
             )
         },
         floatingActionButton = {
             // Pulsante fluttuante "+" per aggiungere un nuovo dado
             FloatingActionButton(
                 onClick = { if (!isRolling) viewModel.addDie() },
-                containerColor = MaterialTheme.colorScheme.primary
+                containerColor = MaterialTheme.colorScheme.primary,
             ) {
                 Icon(Icons.Default.Add, contentDescription = "Aggiungi Dado")
             }
-        }
+        },
     ) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
                 .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
                 text = "Tocca un dado per rimuoverlo",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(bottom = 4.dp)
+                modifier = Modifier.padding(bottom = 4.dp),
             )
             
             Text(
                 text = "Totale dadi: ${dice.size}",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(bottom = 12.dp)
+                modifier = Modifier.padding(bottom = 12.dp),
             )
 
             // Griglia dinamica dei dadi che si adatta allo spazio disponibile
             BoxWithConstraints(
                 modifier = Modifier
                     .weight(1f)
-                    .fillMaxWidth()
+                    .fillMaxWidth(),
             ) {
                 if (dice.isEmpty()) {
                     Box(
                         modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
+                        contentAlignment = Alignment.Center,
                     ) {
                         Text(
                             text = "Nessun dado. Premi '+' per aggiungerne uno!",
                             style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.outline
+                            color = MaterialTheme.colorScheme.outline,
                         )
                     }
                 } else {
@@ -178,7 +178,7 @@ fun DiceScreen(
                         dice.size == 2 -> 2
                         dice.size == 3 -> 3
                         dice.size == 4 -> if (maxWidth > 500.dp) 4 else 2
-                        (dice.size in 5..6) -> if (maxWidth > 500.dp) 4 else 3
+                        dice.size <= 6 -> if (maxWidth > 500.dp) 4 else 3
                         else -> 4
                     }
 
@@ -194,21 +194,21 @@ fun DiceScreen(
                         columns = GridCells.Fixed(numColumns),
                         modifier = Modifier.fillMaxSize(),
                         horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
-                        verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically)
+                        verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
                     ) {
-                        itemsIndexed(dice, key = { _, die -> die.id }) { index, die ->
+                        itemsIndexed(dice, key = { _, (dieId, _) -> dieId }) { index, dieItem ->
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .animateItem(),
-                                contentAlignment = Alignment.Center
+                                contentAlignment = Alignment.Center,
                             ) {
                                 DiceView(
-                                    die = die,
+                                    die = dieItem,
                                     isRolling = isRolling,
                                     staggerIndex = index,
-                                    onClickToRemove = { viewModel.removeDie(die.id) },
-                                    size = calculatedSize
+                                    onClickToRemove = { viewModel.removeDie(dieItem.id) },
+                                    size = calculatedSize,
                                 )
                             }
                         }
@@ -230,20 +230,20 @@ fun DiceScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
-                enabled = dice.isNotEmpty() && !isRolling
+                enabled = dice.isNotEmpty() && !isRolling,
             ) {
                 Icon(
                     imageVector = Icons.Default.Refresh,
                     contentDescription = null,
                     modifier = Modifier
                         .size(24.dp)
-                        .rotate(if (isRolling) iconRotation else 0f)
+                        .rotate(if (isRolling) iconRotation else 0f),
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = if (isRolling) "LANCIANDO..." else "LANCIA I DADI",
                     fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
                 )
             }
         }
@@ -257,29 +257,29 @@ fun DiceScreen(
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.HelpOutline,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary
+                    tint = MaterialTheme.colorScheme.primary,
                 )
             },
             title = {
                 Text(
                     text = "Regole del Perudo",
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
                 )
             },
             text = {
                 Column(
                     modifier = Modifier.verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
                     Text(
                         text = "🎲 Il Dado 1 (Jolly)",
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
+                        color = MaterialTheme.colorScheme.primary,
                     )
                     Text(
                         text = "Gli 1 valgono come Jolly e contano come qualsiasi numero! Quando scommetti su un valore (es. i 5), sommi sia i 5 naturali sia tutti i Jolly (1).\n• Non si può iniziare un round sugli 1",
-                        style = MaterialTheme.typography.bodyMedium
+                        style = MaterialTheme.typography.bodyMedium,
                     )
 
                     Spacer(modifier = Modifier.height(2.dp))
@@ -288,11 +288,11 @@ fun DiceScreen(
                         text = "🗣️ Le Dichiarazioni e Rilanci",
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
+                        color = MaterialTheme.colorScheme.primary,
                     )
                     Text(
                         text = "I giocatori scommettono a turno sul numero minimo di dadi di un certo valore presenti complessivamente sul tavolo tra tutti i giocatori. A ogni turno puoi rilanciare aumentando la quantità o il valore del dado.",
-                        style = MaterialTheme.typography.bodyMedium
+                        style = MaterialTheme.typography.bodyMedium,
                     )
 
                     Spacer(modifier = Modifier.height(2.dp))
@@ -301,11 +301,11 @@ fun DiceScreen(
                         text = "⚡ Dubito!",
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
+                        color = MaterialTheme.colorScheme.primary,
                     )
                     Text(
                         text = "Se ritieni che la scommessa precedente sia falsa, dici \"Dubito!\". Si rivelano tutti i dadi: se la quantità reale (inclusi i Jolly) è inferiore alla chiamata, lo scommettitore perde un dado; altrimenti perde un dado chi ha dubitato.",
-                        style = MaterialTheme.typography.bodyMedium
+                        style = MaterialTheme.typography.bodyMedium,
                     )
 
                     Spacer(modifier = Modifier.height(2.dp))
@@ -314,11 +314,11 @@ fun DiceScreen(
                         text = "🧦 La Calza (Chiamata Esatta)",
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
+                        color = MaterialTheme.colorScheme.primary,
                     )
                     Text(
                         text = "Se non sei di turno (non stai dichiarando né dubitando), puoi interrompere dicendo \"Calzo!\" se credi che la scommessa corrente sia ESATTAMENTE pari al numero reale di dadi sul tavolo.\n• Se indovini vinci un dado e si conclude la manche, la successiva riparte da te.\n• Se sbagli: perdi 1 dado e si conclude la manche, la successiva riparte da te.",
-                        style = MaterialTheme.typography.bodyMedium
+                        style = MaterialTheme.typography.bodyMedium,
                     )
 
                     Spacer(modifier = Modifier.height(2.dp))
@@ -327,11 +327,11 @@ fun DiceScreen(
                         text = "🏛️ Il Palafico",
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
+                        color = MaterialTheme.colorScheme.primary,
                     )
                     Text(
-                        text = "Quando un giocatore rimane per la prima φορά con un SOLO dado, la manche successiva è una manche di Palafico:\n• Gli 1 NON sono Jolly (valgono soltanto come 1).\n• Il giocatore in Palafico decide il valore del dado scommesso; gli altri giocatori possono solo aumentare la quantità mantenendo lo stesso dado.",
-                        style = MaterialTheme.typography.bodyMedium
+                        text = "Quando un giocatore rimane per la prima volta con un SOLO dado, la manche successiva è una manche di Palafico:\n• Gli 1 NON sono Jolly (valgono soltanto come 1).\n• Il giocatore in Palafico decide il valore del dado scommesso; gli altri giocatori possono solo aumentare la quantità mantenendo lo stesso dado.",
+                        style = MaterialTheme.typography.bodyMedium,
                     )
                 }
             },
@@ -340,7 +340,7 @@ fun DiceScreen(
                     Text("Ho capito", fontWeight = FontWeight.Bold)
                 }
             },
-            shape = RoundedCornerShape(20.dp)
+            shape = RoundedCornerShape(20.dp),
         )
     }
 }
