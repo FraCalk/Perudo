@@ -7,7 +7,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import com.example.perudo.ui.screen.DiceScreen
 import com.example.perudo.ui.theme.PerudoTheme
@@ -19,12 +19,13 @@ class MainActivity : ComponentActivity() {
         setContent {
             // Ottiene il tema di sistema all'avvio in modo sicuro all'interno del contesto Composable
             val systemDark = isSystemInDarkTheme()
-            var darkTheme by remember { mutableStateOf(systemDark) }
+            // Utilizza rememberSaveable per preservare il tema selezionato anche dopo la rotazione dello schermo (orientation change)
+            var darkTheme by rememberSaveable { mutableStateOf(systemDark) }
             
             PerudoTheme(darkTheme = darkTheme) {
                 DiceScreen(
                     darkTheme = darkTheme,
-                    onToggleTheme = { darkTheme = !darkTheme }
+                    onToggleTheme = { darkTheme = !darkTheme },
                 )
             }
         }

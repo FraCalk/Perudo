@@ -101,7 +101,7 @@ private fun projectPoint(p: Point3D, center: Offset, focalLength: Float = 750f):
 }
 
 /**
- * Renderer pulito ed elegante per il dado con modello 3D e spigoli smussati.
+ * Renderer pulito ed elegante per il dado con modello 3D coerente e senza cambi improvvisi di faccia.
  */
 @Composable
 fun DiceView(
@@ -114,7 +114,7 @@ fun DiceView(
 ) {
     var displayedValue by remember { mutableIntStateOf(die.value) }
 
-    // Animazioni pulite e lineari per il capovolgimento 3D
+    // Animazioni pulite e coerenti per la capovolta 3D
     val rotX = remember { Animatable(0f) }
     val rotY = remember { Animatable(0f) }
     val scale = remember { Animatable(1f) }
@@ -131,18 +131,10 @@ fun DiceView(
             val delayMs = (staggerIndex * 70L).coerceAtMost(350L)
             delay(delayMs.milliseconds)
 
-            // Cambia ordinatamente i numeri durante il lancio
-            launch {
-                val startTime = System.currentTimeMillis()
-                val duration = 500L
-                while ((System.currentTimeMillis() - startTime) < duration) {
-                    displayedValue = kotlin.random.Random.nextInt(1, 7)
-                    delay(50.milliseconds)
-                }
-                displayedValue = die.value
-            }
+            // Fissa fin dall'inizio il valore effettivo del dado per garantire coerenza totale
+            displayedValue = die.value
 
-            // Animazione fisica pulita: salto verticale e capovolta 3D lineare e chiara
+            // Animazione fisica pulita: salto verticale e capovolta 3D coerente
             launch {
                 // Traiettoria d'arco verticale pulita con impatto morbido
                 launch {
@@ -174,7 +166,7 @@ fun DiceView(
                     )
                 }
 
-                // Capovolta 3D direzionale pulita (capovolta in avanti con lieve prospettiva d'angolo)
+                // Capovolta 3D coerente che termina esattamente sul valore finale die.value
                 launch {
                     rotX.animateTo(
                         targetValue = 360f,
@@ -184,12 +176,8 @@ fun DiceView(
                 }
                 launch {
                     rotY.animateTo(
-                        targetValue = 28f,
-                        animationSpec = tween(durationMillis = 260, easing = FastOutSlowInEasing),
-                    )
-                    rotY.animateTo(
-                        targetValue = 0f,
-                        animationSpec = tween(durationMillis = 260, easing = FastOutSlowInEasing),
+                        targetValue = 360f,
+                        animationSpec = tween(durationMillis = 520, easing = FastOutSlowInEasing),
                     )
                     rotY.snapTo(0f)
                 }

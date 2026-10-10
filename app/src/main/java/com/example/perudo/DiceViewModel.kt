@@ -79,6 +79,22 @@ class DiceViewModel : ViewModel() {
     private val _isRolling = MutableStateFlow(value = false)
     val isRolling: StateFlow<Boolean> = _isRolling.asStateFlow()
 
+    // Numero totale di dadi nella partita (miei + avversari)
+    private val _totalMatchDice = MutableStateFlow(value = 30)
+    val totalMatchDice: StateFlow<Int> = _totalMatchDice.asStateFlow()
+
+    fun setTotalMatchDice(count: Int) {
+        _totalMatchDice.value = count.coerceAtLeast(1)
+    }
+
+    fun incrementTotalMatchDice() {
+        _totalMatchDice.update { it + 1 }
+    }
+
+    fun decrementTotalMatchDice() {
+        _totalMatchDice.update { (it - 1).coerceAtLeast(1) }
+    }
+
     // Flusso reattivo che calcola automaticamente il riepilogo del Perudo ogni volta che la lista dei dadi cambia
     val diceSummary: StateFlow<DiceSummary> = _dice.map { diceList ->
         calculateSummary(diceList)
@@ -157,6 +173,7 @@ class DiceViewModel : ViewModel() {
         _dice.update { current ->
             current + DieItem(id = nextId++, value = Random.nextInt(1, 7))
         }
+        _totalMatchDice.update { it + 1 }
     }
 
     /**
@@ -167,6 +184,7 @@ class DiceViewModel : ViewModel() {
         _dice.update { current ->
             current.filter { (idItem, _) -> idItem != id }
         }
+        _totalMatchDice.update { (it - 1).coerceAtLeast(1) }
     }
 
     /**

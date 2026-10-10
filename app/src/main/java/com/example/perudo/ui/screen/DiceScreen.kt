@@ -6,10 +6,13 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -22,12 +25,15 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Casino
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -36,7 +42,9 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -51,6 +59,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -73,9 +82,12 @@ fun DiceScreen(
     val dice by viewModel.dice.collectAsState()
     val isRolling by viewModel.isRolling.collectAsState()
     val summary by viewModel.diceSummary.collectAsState()
+    val totalMatchDice by viewModel.totalMatchDice.collectAsState()
 
     // Stato per gestire la visibilità del dialogo con le regole del Perudo
     var showRulesDialog by remember { mutableStateOf(value = false) }
+    // Stato per gestire la visibilità del dialogo di inserimento dadi totali
+    var showMatchDialog by remember { mutableStateOf(value = false) }
 
     // Transizione infinita per animare la rotazione dell'icona di ricarica durante il lancio
     val infiniteTransition = rememberInfiniteTransition(label = "iconRollTransition")
@@ -93,10 +105,75 @@ fun DiceScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Text(
-                        text = "Perudo",
-                        fontWeight = FontWeight.Bold,
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        // Pulsantiera centrale in alto con - [ Dadi Totali ] +
+                        Surface(
+                            shape = RoundedCornerShape(16.dp),
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)),
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                // Tasto di decremento in alto
+                                IconButton(
+                                    onClick = { viewModel.decrementTotalMatchDice() },
+                                    modifier = Modifier.size(36.dp),
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Remove,
+                                        contentDescription = "Diminuisci dadi",
+                                        modifier = Modifier.size(16.dp),
+                                        tint = MaterialTheme.colorScheme.primary,
+                                    )
+                                }
+
+                                // Numero centrale cliccabile per aprire il pop-up di modifica testuale
+                                Box(
+                                    modifier = Modifier
+                                        .clickable { showMatchDialog = true }
+                                        .padding(horizontal = 8.dp, vertical = 6.dp),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Casino,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(16.dp),
+                                            tint = MaterialTheme.colorScheme.primary,
+                                        )
+                                        Text(
+                                            text = "Tot: $totalMatchDice",
+                                            style = MaterialTheme.typography.labelLarge,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                        )
+                                    }
+                                }
+
+                                // Tasto di incremento in alto
+                                IconButton(
+                                    onClick = { viewModel.incrementTotalMatchDice() },
+                                    modifier = Modifier.size(36.dp),
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Add,
+                                        contentDescription = "Aumenta dadi",
+                                        modifier = Modifier.size(16.dp),
+                                        tint = MaterialTheme.colorScheme.primary,
+                                    )
+                                }
+                            }
+                        }
+                    }
                 },
                 navigationIcon = {
                     // Pulsante in alto a sinistra per alternare tra Light Mode e Dark Mode
@@ -148,7 +225,7 @@ fun DiceScreen(
             )
             
             Text(
-                text = "Totale dadi: ${dice.size}",
+                text = "Totale dadi miei: ${dice.size}",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(bottom = 12.dp),
@@ -178,7 +255,7 @@ fun DiceScreen(
                         dice.size == 2 -> 2
                         dice.size == 3 -> 3
                         dice.size == 4 -> if (maxWidth > 500.dp) 4 else 2
-                        dice.size <= 6 -> if (maxWidth > 500.dp) 4 else 3
+                        (dice.size <= 6) -> if (maxWidth > 500.dp) 4 else 3
                         else -> 4
                     }
 
@@ -247,6 +324,62 @@ fun DiceScreen(
                 )
             }
         }
+    }
+
+    // Dialogo per la modifica testuale dei dadi totali quando si clicca sul numero in alto
+    if (showMatchDialog) {
+        var textInput by remember { mutableStateOf(totalMatchDice.toString()) }
+
+        AlertDialog(
+            onDismissRequest = { showMatchDialog = false },
+            icon = {
+                Icon(
+                    imageVector = Icons.Default.Casino,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+            },
+            title = {
+                Text(
+                    text = "Modifica Dadi Totali",
+                    fontWeight = FontWeight.Bold,
+                )
+            },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                ) {
+                    Text(
+                        text = "Inserisci il numero effettivo dei dadi totali in gioco:",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+
+                    OutlinedTextField(
+                        value = textInput,
+                        onValueChange = { newValue ->
+                            textInput = newValue
+                            val parsed = newValue.toIntOrNull()
+                            if (parsed != null) {
+                                viewModel.setTotalMatchDice(parsed)
+                            }
+                        },
+                        label = { Text("Dadi totali") },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showMatchDialog = false }) {
+                    Text("Conferma", fontWeight = FontWeight.Bold)
+                }
+            },
+            shape = RoundedCornerShape(20.dp),
+        )
     }
 
     // Dialogo pop-up con le regole complete del Perudo
