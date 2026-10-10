@@ -188,19 +188,21 @@ class DiceViewModel : ViewModel() {
     }
 
     /**
-     * Simula il lancio dei dadi con animazione e ritardo temporale, assegnando nuovi valori casuali.
+     * Genera immediatamente i nuovi valori dei dadi all'avvio del lancio, affinché l'animazione 3D
+     * utilizzi fin dal primo frame del volo il valore di destinazione e atterri già con quello.
      */
     fun rollDice() {
         if (_isRolling.value || _dice.value.isEmpty()) return
         viewModelScope.launch {
             _isRolling.value = true
-            delay(400.milliseconds) // Ritardo iniziale per la fase di sollevamento
+            // Genera i nuovi valori IMMEDIATAMENTE a t = 0ms prima del lancio e atterraggio
             _dice.update { current ->
                 current.map { die ->
                     die.copy(value = Random.nextInt(1, 7))
                 }
             }
-            delay(350.milliseconds) // Ritardo di assestamento
+            // Mantiene lo stato di lancio attivo per la durata dell'animazione 3D
+            delay(480.milliseconds)
             _isRolling.value = false
         }
     }

@@ -29,15 +29,12 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.example.perudo.DieItem
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.cos
 import kotlin.math.sin
-import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * Mappa dei dati 3D per le facce di un dado (facce opposte sommano a 7).
@@ -88,7 +85,7 @@ private fun rotatePoint(p: Point3D, rotXDeg: Float, rotYDeg: Float, rotZDeg: Flo
 }
 
 /**
- * Proiezione ortogonale con lieve prospettiva naturale (focale bilanciata per zero distorsioni).
+ * Proiezione ortogonale con lieve prospettiva naturale.
  */
 private fun projectPoint(p: Point3D, center: Offset, focalLength: Float = 750f): Point2D {
     val cameraDistance = 750f
@@ -101,7 +98,8 @@ private fun projectPoint(p: Point3D, center: Offset, focalLength: Float = 750f):
 }
 
 /**
- * Renderer pulito ed elegante per il dado con modello 3D coerente e senza cambi improvvisi di faccia.
+ * Renderer per il dado che riceve fin dal primo frame del lancio il nuovo valore target,
+ * ruotando e atterrando già sul numero definitivo estratto.
  */
 @Composable
 fun DiceView(
@@ -114,33 +112,31 @@ fun DiceView(
 ) {
     var displayedValue by remember { mutableIntStateOf(die.value) }
 
-    // Animazioni pulite e coerenti per la capovolta 3D
+    // Animazioni per la rotazione 3D e traiettoria
     val rotX = remember { Animatable(0f) }
     val rotY = remember { Animatable(0f) }
+    val rotZ = remember { Animatable(0f) }
     val scale = remember { Animatable(1f) }
     val translationY = remember { Animatable(0f) }
 
     LaunchedEffect(die.value) {
-        if (!isRolling) {
-            displayedValue = die.value
-        }
+        displayedValue = die.value
     }
 
     LaunchedEffect(isRolling) {
         if (isRolling) {
-            val delayMs = (staggerIndex * 70L).coerceAtMost(350L)
-            delay(delayMs.milliseconds)
-
-            // Fissa fin dall'inizio il valore effettivo del dado per garantire coerenza totale
+            // Assegna immediatamente il nuovo valore definitivo prima del salto e rotazione
             displayedValue = die.value
 
-            // Animazione fisica pulita: salto verticale e capovolta 3D coerente
+            val spinDir = if ((staggerIndex % 2) == 0) 1f else -1f
+
+            // Animazione fisica a trottola 3D veloce
             launch {
-                // Traiettoria d'arco verticale pulita con impatto morbido
+                // Arco di salto verticale
                 launch {
                     translationY.animateTo(
-                        targetValue = -55f,
-                        animationSpec = tween(durationMillis = 260, easing = FastOutSlowInEasing),
+                        targetValue = -50f,
+                        animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
                     )
                     translationY.animateTo(
                         targetValue = 0f,
@@ -151,11 +147,11 @@ fun DiceView(
                     )
                 }
 
-                // Espansione di scala proporzionale
+                // Variazione di scala
                 launch {
                     scale.animateTo(
-                        targetValue = 1.22f,
-                        animationSpec = tween(durationMillis = 220),
+                        targetValue = 1.20f,
+                        animationSpec = tween(durationMillis = 140),
                     )
                     scale.animateTo(
                         targetValue = 1f,
@@ -166,18 +162,32 @@ fun DiceView(
                     )
                 }
 
-                // Capovolta 3D coerente che termina esattamente sul valore finale die.value
+                // Inclinazione d'asse trottola
                 launch {
                     rotX.animateTo(
-                        targetValue = 360f,
-                        animationSpec = tween(durationMillis = 520, easing = FastOutSlowInEasing),
+                        targetValue = 28f,
+                        animationSpec = tween(durationMillis = 120, easing = FastOutSlowInEasing),
+                    )
+                    rotX.animateTo(
+                        targetValue = 0f,
+                        animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing),
                     )
                     rotX.snapTo(0f)
                 }
+
+                // Rotazione circolare veloce a trottola (1080 gradi in 320ms)
+                launch {
+                    rotZ.animateTo(
+                        targetValue = 1080f * spinDir,
+                        animationSpec = tween(durationMillis = 320, easing = FastOutSlowInEasing),
+                    )
+                    rotZ.snapTo(0f)
+                }
+
                 launch {
                     rotY.animateTo(
-                        targetValue = 360f,
-                        animationSpec = tween(durationMillis = 520, easing = FastOutSlowInEasing),
+                        targetValue = 360f * spinDir,
+                        animationSpec = tween(durationMillis = 320, easing = FastOutSlowInEasing),
                     )
                     rotY.snapTo(0f)
                 }
@@ -185,6 +195,7 @@ fun DiceView(
         } else {
             rotX.snapTo(0f)
             rotY.snapTo(0f)
+            rotZ.snapTo(0f)
             scale.snapTo(1f)
             translationY.snapTo(0f)
             displayedValue = die.value
@@ -196,51 +207,50 @@ fun DiceView(
     val faceBaseColor = MaterialTheme.colorScheme.surfaceVariant
     val borderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.6f)
 
-    // Ombra dinamica pulita sul terreno
-    val shadowAlpha = (0.50f - (-translationY.value / 120f)).coerceIn(0.15f, 0.50f)
-    val shadowScale = (1f + (-translationY.value / 100f)).coerceIn(1f, 1.3f)
-
     Box(
         modifier = modifier
             .size(size)
             .clickable(enabled = !isRolling, onClick = onClickToRemove),
         contentAlignment = Alignment.Center,
     ) {
-        // Ombra 3D proiettata sul piano d'appoggio
-        Canvas(
-            modifier = Modifier
-                .size(size)
-                .align(Alignment.BottomCenter)
-                .graphicsLayer {
-                    scaleX = shadowScale
-                    scaleY = shadowScale * 0.3f
-                    this.translationY = (size.value * 0.45f).dp.toPx()
-                    alpha = shadowAlpha
-                },
-        ) {
-            drawCircle(
-                color = Color.Black.copy(alpha = 0.35f),
-                radius = this.size.minDimension / 2.2f,
-            )
-        }
-
-        // Canvas di rendering uniforme del dado
+        // Canvas unico per ombra sul terreno, Motion Blur 3D su tutte le facce e dado
         Canvas(
             modifier = Modifier
                 .padding(4.dp)
                 .fillMaxSize(),
         ) {
-            val center = Offset(
-                x = (size.toPx() / 2f),
-                y = (size.toPx() / 2f) + translationY.value.dp.toPx(),
-            )
-
+            val centerPx = size.toPx() / 2f
             val cubeHalfSize = size.toPx() * 0.35f * scale.value
 
-            if ((!isRolling) || ((rotX.value == 0f) && (rotY.value == 0f))) {
-                // A RIPOSO: Faccia frontale perfettamente uniforme
+            // 1. Ombra posizionata sul terreno sotto la base del dado
+            val floorY = centerPx + cubeHalfSize + 6.dp.toPx()
+            val heightOffGround = -translationY.value.dp.toPx()
+
+            val shadowScale = (1f + (heightOffGround / 120f)).coerceIn(1f, 1.35f)
+            val shadowAlpha = (0.45f - (heightOffGround / 140f)).coerceIn(0.10f, 0.45f)
+
+            val shadowWidth = cubeHalfSize * 2.2f * shadowScale
+            val shadowHeight = cubeHalfSize * 0.45f * shadowScale
+
+            drawOval(
+                color = Color.Black.copy(alpha = shadowAlpha),
+                topLeft = Offset(
+                    x = centerPx - (shadowWidth / 2f),
+                    y = floorY - (shadowHeight / 2f),
+                ),
+                size = Size(width = shadowWidth, height = shadowHeight),
+            )
+
+            // 2. Disegna il dado 3D che si solleva in altezza
+            val dieCenter = Offset(
+                x = centerPx,
+                y = centerPx + translationY.value.dp.toPx(),
+            )
+
+            if ((!isRolling) || ((rotX.value == 0f) && (rotY.value == 0f) && (rotZ.value == 0f))) {
+                // A RIPOSO O AD ATTERRAGGIO COMPLETATO: Nitidezza perfetta sulla singola faccia
                 renderFlatFrontFace(
-                    center = center,
+                    center = dieCenter,
                     cubeHalfSize = cubeHalfSize,
                     value = displayedValue,
                     faceBaseColor = faceBaseColor,
@@ -249,14 +259,14 @@ fun DiceView(
                     jollyPipColor = jollyPipColor,
                 )
             } else {
-                // IN MOVIMENTO: Cubo 3D in rotolamento fluido con spigoli smussati
-                render3DCubeRolling(
-                    center = center,
+                // IN MOVIMENTO: Cubo 3D con Motion Blur dinamico
+                renderSolid3DCubeWithMotionBlur(
+                    center = dieCenter,
                     cubeHalfSize = cubeHalfSize,
                     displayedValue = displayedValue,
                     rotX = rotX.value,
                     rotY = rotY.value,
-                    rotZ = 0f,
+                    rotZ = rotZ.value,
                     faceBaseColor = faceBaseColor,
                     borderColor = borderColor,
                     defaultPipColor = defaultPipColor,
@@ -268,7 +278,7 @@ fun DiceView(
 }
 
 /**
- * Renderizza la faccia frontale con la stessa identica geometria e stile del cubo 3D.
+ * Renderizza la faccia frontale con il valore definitivo del dado.
  */
 private fun DrawScope.renderFlatFrontFace(
     center: Offset,
@@ -301,7 +311,7 @@ private fun DrawScope.renderFlatFrontFace(
         style = Stroke(width = (cubeHalfSize * 0.10f).coerceAtLeast(3f)),
     )
 
-    // Pallini della faccia
+    // Pallini nitidi della faccia
     drawFlatPipsForFace(
         center = center,
         cubeHalfSize = cubeHalfSize,
@@ -312,7 +322,7 @@ private fun DrawScope.renderFlatFrontFace(
 }
 
 /**
- * Disegna i pallini per la faccia a riposo con le stesse distanze esatte del modello 3D.
+ * Disegna i pallini per la faccia a riposo.
  */
 private fun DrawScope.drawFlatPipsForFace(
     center: Offset,
@@ -373,6 +383,65 @@ private fun DrawScope.drawFlatPipsForFace(
 }
 
 /**
+ * Renderizza il cubo 3D unito applicando scie di Motion Blur durante la rotazione veloce.
+ */
+private fun DrawScope.renderSolid3DCubeWithMotionBlur(
+    center: Offset,
+    cubeHalfSize: Float,
+    displayedValue: Int,
+    rotX: Float,
+    rotY: Float,
+    rotZ: Float,
+    faceBaseColor: Color,
+    borderColor: Color,
+    defaultPipColor: Color,
+    jollyPipColor: Color,
+) {
+    // Scie di Motion Blur 3D durante la rotazione veloce
+    // Scia Motion Blur 2 (sfumata)
+    renderSolid3DCubeMesh(
+        center = center,
+        cubeHalfSize = cubeHalfSize * 0.97f,
+        displayedValue = displayedValue,
+        rotX = rotX - 22f,
+        rotY = rotY - 22f,
+        rotZ = rotZ - 12f,
+        faceBaseColor = faceBaseColor.copy(alpha = 0.18f),
+        borderColor = borderColor.copy(alpha = 0.22f),
+        defaultPipColor = defaultPipColor.copy(alpha = 0.18f),
+        jollyPipColor = jollyPipColor.copy(alpha = 0.18f),
+    )
+
+    // Scia Motion Blur 1 (vicina)
+    renderSolid3DCubeMesh(
+        center = center,
+        cubeHalfSize = cubeHalfSize * 0.985f,
+        displayedValue = displayedValue,
+        rotX = rotX - 10f,
+        rotY = rotY - 10f,
+        rotZ = rotZ - 5f,
+        faceBaseColor = faceBaseColor.copy(alpha = 0.35f),
+        borderColor = borderColor.copy(alpha = 0.40f),
+        defaultPipColor = defaultPipColor.copy(alpha = 0.35f),
+        jollyPipColor = jollyPipColor.copy(alpha = 0.35f),
+    )
+
+    // Cubo 3D principale
+    renderSolid3DCubeMesh(
+        center = center,
+        cubeHalfSize = cubeHalfSize,
+        displayedValue = displayedValue,
+        rotX = rotX,
+        rotY = rotY,
+        rotZ = rotZ,
+        faceBaseColor = faceBaseColor,
+        borderColor = borderColor,
+        defaultPipColor = defaultPipColor,
+        jollyPipColor = jollyPipColor,
+    )
+}
+
+/**
  * Struttura di rendering per ordinare e disegnare le facce del cubo 3D durante il rotolamento.
  */
 private data class RenderFace(
@@ -420,7 +489,10 @@ private fun createRoundedPolygonPath(pts: List<Point2D>): Path {
     return path
 }
 
-private fun DrawScope.render3DCubeRolling(
+/**
+ * Renderizza un cubo 3D unito e solido condividendo l'array dei vertici proiettati.
+ */
+private fun DrawScope.renderSolid3DCubeMesh(
     center: Offset,
     cubeHalfSize: Float,
     displayedValue: Int,
@@ -432,14 +504,21 @@ private fun DrawScope.render3DCubeRolling(
     defaultPipColor: Color,
     jollyPipColor: Color,
 ) {
-    val v0 = Point3D(-cubeHalfSize, -cubeHalfSize, -cubeHalfSize)
-    val v1 = Point3D(+cubeHalfSize, -cubeHalfSize, -cubeHalfSize)
-    val v2 = Point3D(+cubeHalfSize, +cubeHalfSize, -cubeHalfSize)
-    val v3 = Point3D(-cubeHalfSize, +cubeHalfSize, -cubeHalfSize)
-    val v4 = Point3D(-cubeHalfSize, -cubeHalfSize, +cubeHalfSize)
-    val v5 = Point3D(+cubeHalfSize, -cubeHalfSize, +cubeHalfSize)
-    val v6 = Point3D(+cubeHalfSize, +cubeHalfSize, +cubeHalfSize)
-    val v7 = Point3D(-cubeHalfSize, +cubeHalfSize, +cubeHalfSize)
+    // 8 vertici del cubo 3D
+    val v3D = listOf(
+        Point3D(-cubeHalfSize, -cubeHalfSize, -cubeHalfSize), // 0
+        Point3D(+cubeHalfSize, -cubeHalfSize, -cubeHalfSize), // 1
+        Point3D(+cubeHalfSize, +cubeHalfSize, -cubeHalfSize), // 2
+        Point3D(-cubeHalfSize, +cubeHalfSize, -cubeHalfSize), // 3
+        Point3D(-cubeHalfSize, -cubeHalfSize, +cubeHalfSize), // 4
+        Point3D(+cubeHalfSize, -cubeHalfSize, +cubeHalfSize), // 5
+        Point3D(+cubeHalfSize, +cubeHalfSize, +cubeHalfSize), // 6
+        Point3D(-cubeHalfSize, +cubeHalfSize, +cubeHalfSize), // 7
+    )
+
+    // Proietta i vertici 3D condivisi
+    val rotVerts = v3D.map { rotatePoint(it, rotX, rotY, rotZ) }
+    val projVerts = rotVerts.map { projectPoint(it, center) }
 
     val (frontVal, backVal, topVal, bottomVal, rightVal, leftVal) = getCubeFaceValues(displayedValue)
 
@@ -447,9 +526,9 @@ private fun DrawScope.render3DCubeRolling(
     val lightY = -0.6f
     val lightZ = 0.74f
 
-    data class FaceDef(
+    data class SolidFaceDef(
         val value: Int,
-        val verts: List<Point3D>,
+        val vertIndices: List<Int>,
         val norm: Point3D,
         val uVec: Point3D,
         val vVec: Point3D,
@@ -457,42 +536,42 @@ private fun DrawScope.render3DCubeRolling(
     )
 
     val faceDefs = listOf(
-        // Front (Z = +S)
-        FaceDef(frontVal, listOf(v4, v5, v6, v7), Point3D(0f, 0f, 1f), Point3D(1f, 0f, 0f), Point3D(0f, 1f, 0f), Point3D(0f, 0f, cubeHalfSize)),
-        // Back (Z = -S)
-        FaceDef(backVal, listOf(v1, v0, v3, v2), Point3D(0f, 0f, -1f), Point3D(-1f, 0f, 0f), Point3D(0f, 1f, 0f), Point3D(0f, 0f, -cubeHalfSize)),
-        // Right (X = +S)
-        FaceDef(rightVal, listOf(v5, v1, v2, v6), Point3D(1f, 0f, 0f), Point3D(0f, 0f, -1f), Point3D(0f, 1f, 0f), Point3D(cubeHalfSize, 0f, 0f)),
-        // Left (X = -S)
-        FaceDef(leftVal, listOf(v0, v4, v7, v3), Point3D(-1f, 0f, 0f), Point3D(0f, 0f, 1f), Point3D(0f, 1f, 0f), Point3D(-cubeHalfSize, 0f, 0f)),
-        // Top (Y = -S)
-        FaceDef(topVal, listOf(v0, v1, v5, v4), Point3D(0f, -1f, 0f), Point3D(1f, 0f, 0f), Point3D(0f, 0f, 1f), Point3D(0f, -cubeHalfSize, 0f)),
-        // Bottom (Y = +S)
-        FaceDef(bottomVal, listOf(v7, v6, v2, v3), Point3D(0f, 1f, 0f), Point3D(1f, 0f, 0f), Point3D(0f, 0f, -1f), Point3D(0f, cubeHalfSize, 0f)),
+        // Front
+        SolidFaceDef(frontVal, listOf(4, 5, 6, 7), Point3D(0f, 0f, 1f), Point3D(1f, 0f, 0f), Point3D(0f, 1f, 0f), Point3D(0f, 0f, cubeHalfSize)),
+        // Back
+        SolidFaceDef(backVal, listOf(1, 0, 3, 2), Point3D(0f, 0f, -1f), Point3D(-1f, 0f, 0f), Point3D(0f, 1f, 0f), Point3D(0f, 0f, -cubeHalfSize)),
+        // Right
+        SolidFaceDef(rightVal, listOf(5, 1, 2, 6), Point3D(1f, 0f, 0f), Point3D(0f, 0f, -1f), Point3D(0f, 1f, 0f), Point3D(cubeHalfSize, 0f, 0f)),
+        // Left
+        SolidFaceDef(leftVal, listOf(0, 4, 7, 3), Point3D(-1f, 0f, 0f), Point3D(0f, 0f, 1f), Point3D(0f, 1f, 0f), Point3D(-cubeHalfSize, 0f, 0f)),
+        // Top
+        SolidFaceDef(topVal, listOf(0, 1, 5, 4), Point3D(0f, -1f, 0f), Point3D(1f, 0f, 0f), Point3D(0f, 0f, 1f), Point3D(0f, -cubeHalfSize, 0f)),
+        // Bottom
+        SolidFaceDef(bottomVal, listOf(7, 6, 2, 3), Point3D(0f, 1f, 0f), Point3D(1f, 0f, 0f), Point3D(0f, 0f, -1f), Point3D(0f, cubeHalfSize, 0f)),
     )
 
     val renderFaces = mutableListOf<RenderFace>()
 
-    for ((valNum, verts, norm, uVec, vVec, center3D) in faceDefs) {
-        val rotVerts = verts.map { rotatePoint(it, rotX, rotY, rotZ) }
-        val (nx, ny, nz) = rotatePoint(norm, rotX, rotY, rotZ)
+    for ((valNum, vertIndices, norm, uVec, vVec, center3D) in faceDefs) {
+        val rotNorm = rotatePoint(norm, rotX, rotY, rotZ)
+        val (nx, ny, nz) = rotNorm
         val rotCenter = rotatePoint(center3D, rotX, rotY, rotZ)
         val rotU = rotatePoint(uVec, rotX, rotY, rotZ)
         val rotV = rotatePoint(vVec, rotX, rotY, rotZ)
 
-        val avgZ = rotVerts.asSequence().map { (_, _, zVal) -> zVal }.average().toFloat()
+        val pts2D = vertIndices.map { projVerts[it] }
+        val avgZ = vertIndices.asSequence().map { rotVerts[it].z }.average().toFloat()
 
         val dot = (nx * lightX) + (ny * lightY) + (nz * lightZ)
         val lightFactor = (0.72f + (0.28f * dot)).coerceIn(0.58f, 1.0f)
 
         if (nz > 0.02f) {
-            val points2D = rotVerts.map { projectPoint(it, center) }
             renderFaces.add(
                 RenderFace(
                     value = valNum,
                     avgZ = avgZ,
                     normalZ = nz,
-                    points2D = points2D,
+                    points2D = pts2D,
                     center3D = rotCenter,
                     unitU3D = rotU,
                     unitV3D = rotV,
@@ -508,15 +587,15 @@ private fun DrawScope.render3DCubeRolling(
         val pts = face.points2D
         if (pts.size < 4) continue
 
-        // Poligono della faccia 3D con angoli smussati
+        // Poligono della faccia 3D unito
         val roundedPath = createRoundedPolygonPath(pts)
 
         val litColor = blendColorWithFactor(faceBaseColor, face.lightingFactor)
 
-        // Disegna la faccia del cubo con angoli arrotondati
+        // Disegna il riempimento solido senza fessure
         drawPath(path = roundedPath, color = litColor)
 
-        // Disegna il bordo smussato del cubo
+        // Disegna la struttura di bordo 3D continua ed unita
         drawPath(
             path = roundedPath,
             color = borderColor,
@@ -527,7 +606,7 @@ private fun DrawScope.render3DCubeRolling(
             ),
         )
 
-        // Disegna i pallini proiettati in prospettiva 3D sulla superficie della faccia
+        // Disegna i pallini proiettati in prospettiva 3D su ciascuna faccia
         draw3DPipsForFace(
             face = face,
             center = center,
@@ -539,7 +618,7 @@ private fun DrawScope.render3DCubeRolling(
 }
 
 /**
- * Disegna i pallini proiettati in 3D sulla superficie della faccia durante il rotolamento.
+ * Disegna i pallini proiettati in 3D sulla superficie di ciascuna faccia del cubo.
  */
 private fun DrawScope.draw3DPipsForFace(
     face: RenderFace,
