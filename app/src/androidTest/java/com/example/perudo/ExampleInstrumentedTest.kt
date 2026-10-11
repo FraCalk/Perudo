@@ -9,7 +9,8 @@ import org.junit.runner.RunWith
 import org.junit.Assert.*
 
 /**
- * Instrumented test, which will execute on an Android device.
+ * Test strumentato del template, eseguito su dispositivo o emulatore Android.
+ * Controlla il package dell'app installata; non verifica schermata o regole del gioco.
  *
  * See [testing documentation](http://d.android.com/tools/testing).
  */
@@ -17,7 +18,7 @@ import org.junit.Assert.*
 class ExampleInstrumentedTest {
     @Test
     fun useAppContext() {
-        // Context of the app under test.
+        // Usa il contesto dell'app sotto test, distinto da quello del runner.
         val appContext = InstrumentationRegistry.getInstrumentation().targetContext
         assertEquals("com.example.perudo", appContext.packageName)
     }

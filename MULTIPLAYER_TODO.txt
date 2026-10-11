@@ -1,0 +1,9 @@
+Documento testuale dedicato alla spiegazione del multiplayer e dei procedimenti:
+
+DA AGGIUNGERE: Tasto Multiplayer per accedere a questa sezione con i tasti Host ed Entra in partita
+##PRE-PARTITA##
+
+Host: Il giocatore Hostante preme il tasto e si apre la schermata per scegliere quanti giocatori possono entrare max, una volta deciso si entra in una "Lobby di attesa"
+
+
+	

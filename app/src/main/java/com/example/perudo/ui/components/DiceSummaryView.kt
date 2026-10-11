@@ -120,6 +120,8 @@ fun DiceSummaryView(
             )
 
             if (summary.combinations.isEmpty()) {
+                // Se mancano naturali, la lista delle combinazioni e vuota anche
+                // con pi? Jolly: questo messaggio spiega come interpretarli.
                 val emptyMessage = if (summary.jollyCount >= 2) {
                     "Hai ${summary.jollyCount} Jolly: puoi formare una Coppia con qualsiasi numero!"
                 } else {
@@ -197,6 +199,8 @@ private fun ValueCountTile(
     info: ValueCountInfo,
     modifier: Modifier = Modifier,
 ) {
+    // Il riquadro mostra solo dadi naturali: i Jolly sono indicati separatamente.
+    // totalWithJolly resta disponibile nel modello ma non ? visualizzato qui.
     val isHighlighted = info.naturalCount > 0
 
     Column(
@@ -240,6 +244,8 @@ private fun MiniDicePips(
     color: Color,
 ) {
     Canvas(modifier = Modifier.size(24.dp).padding(3.dp)) {
+        // Coordinate relative al Canvas per mantenere proporzioni costanti.
+        // Sono disegnate solo le facce 2..6; gli 1 hanno la sezione Jolly dedicata.
         val radius = size.minDimension / 10f
         val width = size.width
         val height = size.height

@@ -5,6 +5,7 @@
    Note: This file is ignored for devices older than API 31
    See https://developer.android.com/about/versions/12/backup-restore
 -->
+<!-- Non contiene include/exclude attivi: non definisce filtri personalizzati di backup. -->
 <full-backup-content>
     <!--
    <include domain="sharedpref" path="."/>

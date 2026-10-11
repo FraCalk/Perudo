@@ -66,10 +66,14 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.perudo.DiceViewModel
 import com.example.perudo.ui.components.DiceSummaryView
 import com.example.perudo.ui.components.DiceView
+import com.example.perudo.ui.components.MultiplayerMenu
 
 /**
  * Schermata principale dell'applicazione Perudo che ospita la griglia dei dadi,
  * il pannello di riepilogo, il pulsante di lancio animato e il dialogo con le regole del gioco.
+ * @param darkTheme Tema attualmente scelto nell'Activity.
+ * @param onToggleTheme Callback che richiede il cambio di tema.
+ * @param viewModel Stato e operazioni sui dadi, ottenuti dal ViewModelStoreOwner corrente.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -78,17 +82,24 @@ fun DiceScreen(
     onToggleTheme: () -> Unit,
     viewModel: DiceViewModel = viewModel(),
 ) {
+    // collectAsState converte i flussi in stato Compose: ogni emissione aggiorna
+    // le parti della schermata che leggono quei valori.
     // Osserva gli stati reattivi provenienti dal ViewModel
     val dice by viewModel.dice.collectAsState()
     val isRolling by viewModel.isRolling.collectAsState()
     val summary by viewModel.diceSummary.collectAsState()
     val totalMatchDice by viewModel.totalMatchDice.collectAsState()
 
-    // Stato per gestire la visibilità del dialogo con le regole del Perudo
+    // remember conserva questi flag nelle ricomposizioni, ma non alla ricreazione dell'Activity.
+    // Stato per gestire la visibilit? del dialogo con le regole del Perudo
     var showRulesDialog by remember { mutableStateOf(value = false) }
     // Stato per gestire la visibilità del dialogo di inserimento dadi totali
     var showMatchDialog by remember { mutableStateOf(value = false) }
+    // La voce selezionata apre un avviso finche non sono presenti i flussi di rete.
+    var selectedMultiplayerAction by remember { mutableStateOf<String?>(null) }
 
+    // La transizione resta attiva mentre la schermata e composta; il suo angolo
+    // viene applicato all'icona solo quando isRolling ? true.
     // Transizione infinita per animare la rotazione dell'icona di ricarica durante il lancio
     val infiniteTransition = rememberInfiniteTransition(label = "iconRollTransition")
     val iconRotation by infiniteTransition.animateFloat(
@@ -101,10 +112,44 @@ fun DiceScreen(
         label = "iconRotation",
     )
 
+    // Struttura Material con barra superiore, contenuto e pulsante fluttuante.
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
+            Column {
+                TopAppBar(
+                    title = {},
+                    navigationIcon = {
+                        MultiplayerMenu(
+                            onCreateMatch = { selectedMultiplayerAction = "Crea una Partita" },
+                            onJoinMatch = { selectedMultiplayerAction = "Entra in una partita" },
+                        )
+                    },
+                    actions = {
+                        // Il cambio tema resta disponibile accanto al regolamento.
+                        IconButton(onClick = onToggleTheme) {
+                            Icon(
+                                imageVector = if (darkTheme) Icons.Default.WbSunny else Icons.Default.DarkMode,
+                                contentDescription = "Cambia Modalità Tema",
+                                tint = MaterialTheme.colorScheme.primary,
+                            )
+                        }
+                        IconButton(onClick = { showRulesDialog = true }) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.HelpOutline,
+                                contentDescription = "Regole del Gioco",
+                                tint = MaterialTheme.colorScheme.primary,
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.surface,
+                    ),
+                )
+                // Seconda riga per il contatore: lascia spazio al menu anche su schermi piccoli.
+                Surface(
+                    color = MaterialTheme.colorScheme.surface,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.Center,
@@ -174,31 +219,8 @@ fun DiceScreen(
                             }
                         }
                     }
-                },
-                navigationIcon = {
-                    // Pulsante in alto a sinistra per alternare tra Light Mode e Dark Mode
-                    IconButton(onClick = onToggleTheme) {
-                        Icon(
-                            imageVector = if (darkTheme) Icons.Default.WbSunny else Icons.Default.DarkMode,
-                            contentDescription = "Cambia Modalità Tema",
-                            tint = MaterialTheme.colorScheme.primary,
-                        )
-                    }
-                },
-                actions = {
-                    // Pulsante per aprire il regolamento del gioco
-                    IconButton(onClick = { showRulesDialog = true }) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.HelpOutline,
-                            contentDescription = "Regole del Gioco",
-                            tint = MaterialTheme.colorScheme.primary,
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                ),
-            )
+                }
+            }
         },
         floatingActionButton = {
             // Pulsante fluttuante "+" per aggiungere un nuovo dado
@@ -210,6 +232,7 @@ fun DiceScreen(
             }
         },
     ) { innerPadding ->
+        // Il padding di Scaffold tiene il contenuto fuori dalla barra superiore.
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -259,6 +282,8 @@ fun DiceScreen(
                         else -> 4
                     }
 
+                    // La larghezza decide solo alcuni casi di colonne; le dimensioni
+                    // dei dadi sono valori prefissati, non un adattamento continuo.
                     // Scala la dimensione dei dadi dinamicamente in base alle colonne
                     val calculatedSize = when (numColumns) {
                         1 -> 130.dp
@@ -273,6 +298,8 @@ fun DiceScreen(
                         horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
                         verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
                     ) {
+                        // La chiave stabile conserva lo stato di ciascun dado quando
+                        // cambia la lista; animateItem anima inserimenti, rimozioni e spostamenti.
                         itemsIndexed(dice, key = { _, (dieId, _) -> dieId }) { index, dieItem ->
                             Box(
                                 modifier = Modifier
@@ -326,8 +353,25 @@ fun DiceScreen(
         }
     }
 
+    // Riscontro esplicito: le voci del menu non creano ancora sessioni multiplayer.
+    selectedMultiplayerAction?.let { action ->
+        AlertDialog(
+            onDismissRequest = { selectedMultiplayerAction = null },
+            title = { Text(action) },
+            text = {
+                Text("Le partite multiplayer non sono ancora disponibili.")
+            },
+            confirmButton = {
+                TextButton(onClick = { selectedMultiplayerAction = null }) {
+                    Text("Ho capito")
+                }
+            },
+        )
+    }
+
     // Dialogo per la modifica testuale dei dadi totali quando si clicca sul numero in alto
     if (showMatchDialog) {
+        // Lo stato nasce all'apertura del dialogo e viene eliminato quando questo si chiude.
         var textInput by remember { mutableStateOf(totalMatchDice.toString()) }
 
         AlertDialog(
@@ -361,6 +405,9 @@ fun DiceScreen(
                         value = textInput,
                         onValueChange = { newValue ->
                             textInput = newValue
+                            // Ogni intero valido aggiorna subito il ViewModel; testo vuoto
+                            // o non convertibile lascia il totale precedente. Conferma chiude
+                            // soltanto il dialogo e la chiusura non annulla le modifiche.
                             val parsed = newValue.toIntOrNull()
                             if (parsed != null) {
                                 viewModel.setTotalMatchDice(parsed)
@@ -382,7 +429,9 @@ fun DiceScreen(
         )
     }
 
-    // Dialogo pop-up con le regole complete del Perudo
+    // Regolamento informativo: queste descrizioni non implementano turni, Dubito,
+    // Calza o Palafico. Il riepilogo continua a trattare gli 1 come Jolly.
+    // Dialogo pop-up con le regole del Perudo
     if (showRulesDialog) {
         AlertDialog(
             onDismissRequest = { showRulesDialog = false },

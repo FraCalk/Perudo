@@ -6,7 +6,8 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
-// Set of Material typography styles to start with
+// Personalizza bodyLarge con font di sistema, peso normale e dimensioni in sp,
+// che seguono la scala caratteri scelta dall'utente. Gli altri stili restano Material.
 val Typography = Typography(
     bodyLarge = TextStyle(
         fontFamily = FontFamily.Default,

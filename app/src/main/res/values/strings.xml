@@ -1,3 +1,4 @@
 <resources>
+    <!-- Nome richiamato dal manifest; gli altri testi UI sono attualmente nei composable. -->
     <string name="app_name">Perudo</string>
 </resources>

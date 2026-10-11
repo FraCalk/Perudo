@@ -25,7 +25,13 @@ data class DieItem(
 )
 
 /**
- * Informazioni su una combinazione o coppia rilevata tra i dadi.
+ * Informazioni su una combinazione o coppia rilevata tra i dadi del giocatore.
+ * @property value Faccia naturale considerata, da 2 a 6.
+ * @property naturalCount Dadi che mostrano esattamente questa faccia.
+ * @property jollyCount Dadi da 1 utilizzabili per completare la combinazione.
+ * @property totalWithJolly Somma dei dadi naturali e dei Jolly.
+ * @property typeName Etichetta della combinazione, per esempio Coppia o Tris.
+ * @property description Testo che distingue dadi naturali e Jolly nel riepilogo.
  */
 data class CombinationInfo(
     val value: Int,
@@ -37,7 +43,10 @@ data class CombinationInfo(
 )
 
 /**
- * Conteggio dei dadi per un determinato valore facciale.
+ * Conteggio dei dadi del giocatore per un determinato valore facciale, da 2 a 6.
+ * @property value Faccia di cui si calcola il conteggio.
+ * @property naturalCount Numero di occorrenze esatte, mostrato nei riquadri della UI.
+ * @property totalWithJolly Conteggio comprensivo degli 1, disponibile nel modello.
  */
 data class ValueCountInfo(
     val value: Int,
@@ -46,7 +55,10 @@ data class ValueCountInfo(
 )
 
 /**
- * Riepilogo generale dello stato dei dadi per il gioco del Perudo.
+ * Riepilogo dei soli dadi del giocatore; il totale di partita non entra nel calcolo.
+ * @property jollyCount Numero di dadi con valore 1.
+ * @property combinations Combinazioni con almeno un naturale e almeno due dadi totali.
+ * @property valueBreakdown Conteggi per tutte le facce da 2 a 6, comprese quelle assenti.
  */
 data class DiceSummary(
     val jollyCount: Int,
@@ -55,7 +67,10 @@ data class DiceSummary(
 )
 
 /**
- * ViewModel principale che gestisce la logica di business e lo stato reattivo dei dadi.
+ * Gestisce dadi, lancio e contatore di partita, separando i dati dalla UI Compose.
+ * Sopravvive alle ricreazioni dell'Activity, ma non salva lo stato su disco:
+ * dopo la terminazione del processo vengono ricreati i valori iniziali.
+ * Turni, dichiarazioni e Palafico non sono gestiti da questo modello.
  */
 class DiceViewModel : ViewModel() {
     // Contatore progressivo per assegnare ID unici ai nuovi dadi creati
@@ -83,14 +98,17 @@ class DiceViewModel : ViewModel() {
     private val _totalMatchDice = MutableStateFlow(value = 30)
     val totalMatchDice: StateFlow<Int> = _totalMatchDice.asStateFlow()
 
+    /** Imposta il contatore manuale di partita, con un minimo di 1 anche senza dadi propri. */
     fun setTotalMatchDice(count: Int) {
         _totalMatchDice.value = count.coerceAtLeast(1)
     }
 
+    /** Aumenta il totale di partita senza aggiungere un dado alla mano del giocatore. */
     fun incrementTotalMatchDice() {
         _totalMatchDice.update { it + 1 }
     }
 
+    /** Riduce il totale di partita senza modificare la mano, fermandosi a 1. */
     fun decrementTotalMatchDice() {
         _totalMatchDice.update { (it - 1).coerceAtLeast(1) }
     }
@@ -100,6 +118,7 @@ class DiceViewModel : ViewModel() {
         calculateSummary(diceList)
     }.stateIn(
         scope = viewModelScope,
+        // Mantiene il calcolo attivo per 5 secondi dopo la disconnessione dell'ultimo osservatore.
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = calculateSummary(_dice.value),
     )
@@ -113,6 +132,7 @@ class DiceViewModel : ViewModel() {
         val combinations = mutableListOf<CombinationInfo>()
         val valueBreakdown = mutableListOf<ValueCountInfo>()
 
+        // Gli 1 sono sempre Jolly in questo calcolo: non esiste una modalit? Palafico.
         // Analizza i valori da 2 a 6
         for (v in 2..6) {
             val natural = diceList.count { (_, value) -> value == v }
@@ -126,6 +146,8 @@ class DiceViewModel : ViewModel() {
                 ),
             )
 
+            // Il riepilogo include anche facce senza dadi naturali, ma la lista delle
+            // combinazioni richiede almeno un naturale: i soli Jolly non generano etichette.
             // Se ci sono abbastanza dadi (naturali + jolly) per formare almeno una coppia
             if ((total >= 2) && (natural >= 1)) {
                 val label = when (total) {
@@ -167,7 +189,8 @@ class DiceViewModel : ViewModel() {
     }
 
     /**
-     * Aggiunge un nuovo dado alla collezione con un valore casuale iniziale.
+     * Aggiunge un nuovo dado casuale e incrementa il totale di partita.
+     * La schermata impedisce l'aggiunta durante il lancio; questa funzione non la blocca.
      */
     fun addDie() {
         _dice.update { current ->
@@ -177,7 +200,8 @@ class DiceViewModel : ViewModel() {
     }
 
     /**
-     * Rimuove un dado specifico tramite il suo ID (disabilitato durante il lancio).
+     * Rimuove un dado tramite il suo ID; durante il lancio non modifica lo stato.
+     * Decrementa il totale di partita anche se l'ID non esiste: la UI passa ID presenti.
      */
     fun removeDie(id: Int) {
         if (_isRolling.value) return
@@ -202,6 +226,7 @@ class DiceViewModel : ViewModel() {
                 }
             }
             // Mantiene lo stato di lancio attivo per la durata dell'animazione 3D
+            // Il blocco dura 480 ms fissi; non attende la conclusione delle singole molle.
             delay(480.milliseconds)
             _isRolling.value = false
         }

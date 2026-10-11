@@ -48,6 +48,10 @@ private data class CubeFaceValues(
     val left: Int,
 )
 
+/**
+ * Assegna il risultato alla faccia frontale e valori coerenti alle altre cinque.
+ * Serve al disegno durante la rotazione; non estrae nuovi risultati casuali.
+ */
 private fun getCubeFaceValues(target: Int): CubeFaceValues {
     return when (target) {
         1 -> CubeFaceValues(front = 1, back = 6, top = 2, bottom = 5, right = 3, left = 4)
@@ -60,10 +64,13 @@ private fun getCubeFaceValues(target: Int): CubeFaceValues {
     }
 }
 
+// Coordinate locali del cubo, prima della proiezione sul Canvas.
+// Point2D conserva anche il fattore prospettico usato per dimensionare i pallini.
 // Strutture matematiche 3D
 private data class Point3D(val x: Float, val y: Float, val z: Float)
 private data class Point2D(val x: Float, val y: Float, val scale: Float)
 
+/** Ruota un punto o un vettore attorno all'origine, nell'ordine X, Y, Z, con angoli in gradi. */
 private fun rotatePoint(p: Point3D, rotXDeg: Float, rotYDeg: Float, rotZDeg: Float): Point3D {
     val rx = Math.toRadians(rotXDeg.toDouble()).toFloat()
     val ry = Math.toRadians(rotYDeg.toDouble()).toFloat()
@@ -85,7 +92,8 @@ private fun rotatePoint(p: Point3D, rotXDeg: Float, rotYDeg: Float, rotZDeg: Flo
 }
 
 /**
- * Proiezione ortogonale con lieve prospettiva naturale.
+ * Proiezione prospettica semplificata: la scala varia con la profondit? z.
+ * Trasla le coordinate proiettate sul centro del dado nel Canvas.
  */
 private fun projectPoint(p: Point3D, center: Offset, focalLength: Float = 750f): Point2D {
     val cameraDistance = 750f
@@ -98,7 +106,14 @@ private fun projectPoint(p: Point3D, center: Offset, focalLength: Float = 750f):
 }
 
 /**
- * Renderer per il dado con Motion Blur bilanciato a "via di mezzo".
+ * Disegna e anima un dado su Canvas 2D, simulando un cubo tridimensionale.
+ * Il risultato viene deciso dal ViewModel; la rotazione ? solo una presentazione.
+ * @param die Identificativo e valore finale del dado.
+ * @param isRolling Attiva le animazioni e impedisce la rimozione al tocco.
+ * @param staggerIndex Indice che alterna il verso di rotazione; non introduce ritardi.
+ * @param onClickToRemove Operazione richiesta quando si tocca il dado a riposo.
+ * @param modifier Personalizzazione del contenitore Compose.
+ * @param size Dimensione del contenitore in dp.
  */
 @Composable
 fun DiceView(
@@ -109,6 +124,7 @@ fun DiceView(
     modifier: Modifier = Modifier,
     size: Dp = 80.dp,
 ) {
+    // Copia locale del risultato, sincronizzata dagli effetti; non ? un lancio separato.
     var displayedValue by remember { mutableIntStateOf(die.value) }
 
     // Animazioni per la rotazione 3D e traiettoria
@@ -118,10 +134,13 @@ fun DiceView(
     val scale = remember { Animatable(1f) }
     val translationY = remember { Animatable(0f) }
 
+    // Sincronizza il disegno anche quando il valore cambia fuori da un'animazione.
     LaunchedEffect(die.value) {
         displayedValue = die.value
     }
 
+    // Ogni cambio di isRolling cancella il precedente effetto e le coroutine figlie.
+    // Quando il ViewModel termina il lancio, tutti i parametri tornano al riposo.
     LaunchedEffect(isRolling) {
         if (isRolling) {
             // Assegna immediatamente il nuovo valore definitivo prima del salto e rotazione
@@ -129,7 +148,9 @@ fun DiceView(
 
             val spinDir = if ((staggerIndex % 2) == 0) 1f else -1f
 
-            // Animazione fisica a trottola 3D veloce
+            // Le coroutine figlie eseguono in parallelo salto, scala e tre rotazioni.
+            // Tween ha durata prefissata; spring produce il ritorno con rimbalzo.
+            // Animazione visiva a trottola 3D veloce
             launch {
                 // Arco di salto verticale
                 launch {
@@ -201,6 +222,7 @@ fun DiceView(
         }
     }
 
+    // I colori seguono il tema corrente; il singolo pallino degli 1 evidenzia il Jolly.
     val defaultPipColor = MaterialTheme.colorScheme.onSurfaceVariant
     val jollyPipColor = MaterialTheme.colorScheme.primary
     val faceBaseColor = MaterialTheme.colorScheme.surfaceVariant
@@ -331,6 +353,7 @@ private fun DrawScope.drawFlatPipsForFace(
     defaultPipColor: Color,
     jollyPipColor: Color,
 ) {
+    // u e v usano la griglia locale -1, 0, 1; d la converte nella distanza dal centro.
     val d = cubeHalfSize * 0.48f
     val pipRadiusBase = cubeHalfSize * 0.16f
 
@@ -398,7 +421,9 @@ private fun DrawScope.renderSolid3DCubeWithMotionBlur(
     defaultPipColor: Color,
     jollyPipColor: Color,
 ) {
-    // Bilanciamento "via di mezzo" per l'intensità del Motion Blur
+    // L'intensit? dipende dall'altezza, non dalla velocit? angolare misurata.
+    // Le scie sono copie trasparenti con rotazioni sfalsate, senza filtro di sfocatura.
+    // Bilanciamento "via di mezzo" per l'intensit? del Motion Blur
     val velocityFactor = (0.4f + (heightOffGround / 110f)).coerceIn(0.4f, 0.9f)
 
     if (velocityFactor > 0.08f) {
@@ -473,10 +498,12 @@ private fun DrawScope.renderSolid3DCubeWithMotionBlur(
  */
 private data class RenderFace(
     val value: Int,
+    // Profondita media dei vertici, usata per ordinare le facce.
     val avgZ: Float,
     val normalZ: Float,
     val points2D: List<Point2D>,
     val center3D: Point3D,
+    // Assi locali della faccia gi? ruotati, usati per posizionare i pallini.
     val unitU3D: Point3D,
     val unitV3D: Point3D,
     val lightingFactor: Float,
@@ -490,6 +517,8 @@ private fun createRoundedPolygonPath(pts: List<Point2D>): Path {
     val n = pts.size
     if (n < 3) return path
 
+    // Accorcia ogni lato del 22% alle estremita e raccorda gli angoli
+    // con curve quadratiche che usano il vertice originale come punto di controllo.
     val cornerRadiusFactor = 0.22f
     val starts = Array(n) { Offset.Zero }
     val ends = Array(n) { Offset.Zero }
@@ -551,10 +580,13 @@ private fun DrawScope.renderSolid3DCubeMesh(
 
     val (frontVal, backVal, topVal, bottomVal, rightVal, leftVal) = getCubeFaceValues(displayedValue)
 
+    // Direzione luminosa fissa: il prodotto scalare con la normale determina
+    // quanto scurire ciascuna faccia, entro i limiti del fattore di illuminazione.
     val lightX = -0.3f
     val lightY = -0.6f
     val lightZ = 0.74f
 
+    // Ogni faccia associa valore, indici dei vertici, normale, assi e centro locali.
     data class SolidFaceDef(
         val value: Int,
         val vertIndices: List<Int>,
@@ -594,6 +626,8 @@ private fun DrawScope.renderSolid3DCubeMesh(
         val dot = (nx * lightX) + (ny * lightY) + (nz * lightZ)
         val lightFactor = (0.72f + (0.28f * dot)).coerceIn(0.58f, 1.0f)
 
+        // Il renderer seleziona le facce con normale z positiva; la soglia
+        // esclude quelle quasi di taglio. ? la convenzione adottata da questo disegno.
         if (nz > 0.02f) {
             renderFaces.add(
                 RenderFace(
@@ -610,6 +644,7 @@ private fun DrawScope.renderSolid3DCubeMesh(
         }
     }
 
+    // Ordine di disegno per profondit?: le facce successive coprono le precedenti.
     renderFaces.sortByDescending { (_, avgZ) -> avgZ }
 
     for (face in renderFaces) {
@@ -661,9 +696,12 @@ private fun DrawScope.draw3DPipsForFace(
     defaultPipColor: Color,
     jollyPipColor: Color,
 ) {
+    // u e v usano la griglia locale -1, 0, 1; d la converte nella distanza dal centro.
     val d = cubeHalfSize * 0.48f
     val pipRadiusBase = cubeHalfSize * 0.16f
 
+    // Parte dal centro della faccia e si sposta lungo i suoi assi ruotati:
+    // cosi i pallini seguono la superficie durante tutte le rotazioni.
     fun getPipCenter3D(u: Float, v: Float): Point3D {
         return Point3D(
             x = face.center3D.x + (u * d * face.unitU3D.x) + (v * d * face.unitV3D.x),
@@ -732,6 +770,7 @@ private fun DrawScope.draw3DPipsForFace(
     }
 }
 
+/** Modula le componenti RGB per simulare la luce e conserva la trasparenza delle scie. */
 private fun blendColorWithFactor(color: Color, factor: Float): Color {
     return Color(
         red = (color.red * factor).coerceIn(0f, 1f),

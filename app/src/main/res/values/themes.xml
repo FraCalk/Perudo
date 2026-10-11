@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
+    <!-- Tema della finestra Android senza ActionBar: Compose fornisce la propria TopAppBar.
+         Colori e tipografia dei composable sono invece definiti in ui/theme. -->
     <style name="Theme.Perudo" parent="android:Theme.Material.Light.NoActionBar" />
 </resources>

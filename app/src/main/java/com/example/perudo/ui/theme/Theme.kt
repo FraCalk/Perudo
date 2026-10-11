@@ -11,12 +11,14 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 
+// Palette di riserva quando i colori dinamici sono disattivati o non disponibili.
 private val DarkColorScheme = darkColorScheme(
     primary = Purple80,
     secondary = PurpleGrey80,
     tertiary = Pink80
 )
 
+// Personalizza i tre colori principali; gli altri ruoli mantengono i default Material.
 private val LightColorScheme = lightColorScheme(
     primary = Purple40,
     secondary = PurpleGrey40,
@@ -33,12 +35,22 @@ private val LightColorScheme = lightColorScheme(
     */
 )
 
+/**
+ * Fornisce colori e tipografia a tutti i composable contenuti.
+ * Con dynamicColor attivo, Android 12+ usa la palette generata dal sistema:
+ * i colori di Color.kt sono usati soltanto nel percorso di riserva.
+ */
 @Composable
 fun PerudoTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
+    // I colori dinamici del sistema sono disponibili da Android 12.
     dynamicColor: Boolean = true,
-    content: @Composable () -> Unit
+    content: /**
+ * Fornisce colori e tipografia a tutti i composable contenuti.
+ * Con dynamicColor attivo, Android 12+ usa la palette generata dal sistema:
+ * i colori di Color.kt sono usati soltanto nel percorso di riserva.
+ */
+@Composable () -> Unit
 ) {
     val colorScheme = when {
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
