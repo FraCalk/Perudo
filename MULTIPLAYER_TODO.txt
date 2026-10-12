@@ -5,5 +5,7 @@ DA AGGIUNGERE: Tasto Multiplayer per accedere a questa sezione con i tasti Host 
 
 Host: Il giocatore Hostante preme il tasto e si apre la schermata per scegliere quanti giocatori possono entrare max, una volta deciso si entra in una "Lobby di attesa"
 
+Aggiungere anche gestione di kick e di ban
+
 
 	
